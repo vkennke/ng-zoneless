@@ -772,8 +772,14 @@ class: text-center
 
 ## Fragen?
 
-<div class="pt-12 text-sm opacity-50">
-Folien: QR-Code:
+<div class="pt-12 flex items-center justify-center gap-8">
+  <div>
+    <div class="text-sm opacity-70 mb-2">Slides verfügbar unter:</div>
+    <figure>
+        <img src="/qr-code.svg" alt="QR Code zum Git Repository" class="w-40 h-40 mx-auto" />
+        <figcaption>https://tinyurl.com/ng-zoneless</figcaption>
+    </figure>
+  </div>
 </div>
 
 <!--
