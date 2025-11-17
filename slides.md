@@ -603,6 +603,12 @@ Aber: Es lohnt sich!
 
 ---
 
+<style>
+    .top {
+        margin-top: -0.5rem;
+    }
+</style>
+
 # Migration Considerations
 
 <v-clicks>
@@ -614,7 +620,7 @@ Aber: Es lohnt sich!
 ✅ **Performance-kritische Apps**: Große Anwendungen profitieren enorm
 
 ⚠️ **Bestehende Apps**: Schrittweise Migration möglich
-<div class="ml-7">
+<div class="ml-7 top">
 <ul>
 <li>Beide Ansätze können koexistieren</li>
 <li>Neue Components mit Signals schreiben</li>
