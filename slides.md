@@ -153,7 +153,7 @@ Das funktioniert, ist aber nicht ohne Probleme...
 
 # Klassische Angular Component
 
-```typescript {all|3-8|10-12|14-20|all}{maxHeight:'412px'}
+```typescript {all|14|4|5-9|10|20-25|all}{maxHeight:'412px'}
 @Component({
     selector: 'app-user-list',
     template: `
@@ -211,7 +211,7 @@ Das ist bequem, aber schauen wir mal was dabei passiert...
 
 ### Das Problem
 
-```mermaid {scale: 0.55, theme: dark}
+```mermaid {scale: 0.60, theme: dark}
 graph TD
     A[Event: Click] --> B[Zone.js]
     B --> C[Change Detection]
@@ -229,9 +229,6 @@ graph TD
     style H fill:#ff6b6b,stroke:#fff,color:#000
     style I fill:#ff6b6b,stroke:#fff,color:#000
 ```
-
-**Alle Components werden geprüft!**
-
 </div>
 
 </div>
@@ -387,7 +384,7 @@ Gewöhnungsbedürftig, aber sehr mächtig.
 
 # Computed Signals
 
-```typescript {all|2-3|5-9|11-12|all}
+```typescript {all|2-3|5-9|11-14|all}
 @Component({...})
 class ShoppingCart {
     items = signal<Item[]>([]);
@@ -422,7 +419,7 @@ Sehr elegant für Dinge wie Summen, Filter, Sortierungen.
 
 # Effects: Seiteneffekte
 
-```typescript {all|4-8|all}
+```typescript {all|3|12-15|6-9|all}
 @Component({...})
 class UserProfile {
     userId = signal(123);
@@ -456,14 +453,14 @@ Der Effect läuft automatisch, wenn sich userId ändert.
 ---
 
 # Async Resources (rxResource)
-```typescript {all|3-7|9-12|14-17|all}{maxHeight:'412px'}
+```typescript {all|17-21|3-4|5-6|7-13|all}{maxHeight:'412px'}
 @Component({
     template: `
     @if (users.isLoading()) {
       <p>Lädt...</p>
     } @else if (users.hasError()) {
       <p>Fehler: {{ users.error() }}</p>
-    } @else {
+    } @else if (users.hasValue()) {
       <ul>
         @for (user of users.value(); track user.id) {
           <li>{{ user.name }}</li>
@@ -475,8 +472,8 @@ Der Effect läuft automatisch, wenn sich userId ändert.
 class UserList {
     http = inject(HttpClient);
 
-    users = rxResource({
-        loader: () => this.http.get<User[]>('/api/users')
+    users: ResourceRef<User[]> = rxResource({
+        stream: () => this.http.get<User[]>('/api/users')
     });
 }
 ```
@@ -504,12 +501,16 @@ bootstrapApplication(AppComponent, {
 });
 ```
 
+
+
 <v-clicks>
 
-- Seit Angular 18 experimentell verfügbar
-- **Stable seit Angular 19** (November 2024)
+- Seit Angular 18 experimentell verfügbar, **Stable seit Angular 19** (November 2024)
 - Zone.js wird nicht mehr geladen
 - Nur Signals, Async Pipe & explizite `markForCheck()` triggern Updates
+- Nicht vergessen:
+  - zone.js aus den polyfills in der angular.json entfernen
+  - zone.js aus den dependencies in der package.json entfernen
 
 </v-clicks>
 
@@ -712,7 +713,7 @@ layout: section
 
 - **Angular 19** (November 2024): Signals & Zoneless sind **stable**
 - **Angular 20** (Mai 2025): Weitere Optimierungen und Performance-Verbesserungen
-- 🎉 **Angular 21** (November 2025, gerade erschienen!):
+- **Angular 21** (November 2025, gestern erschienen!):
     - **Signal Forms** als neuer Standard
     - **Zoneless ist jetzt der Default**
     - Zone.js nur noch opt-in für Legacy-Apps
@@ -774,10 +775,6 @@ Von **"Implicit"** zu **"Reactive"**
 
 Von **"Overhead"** zu **"Performance"**
 
-<div class="text-4xl mt-8">
-🎯 → ⚡ → 🚀
-</div>
-
 </v-clicks>
 
 <!--
@@ -793,14 +790,15 @@ layout: end
 class: text-center
 ---
 
-# Danke!
-
-## Fragen?
+# Fragen?
 
 <div class="pt-12 flex items-center justify-center gap-8">
   <div>
     <div class="text-sm opacity-70 mb-2">Slides verfügbar unter:</div>
-    <img src="/qr-code.svg" alt="QR Code zum Git Repository" class="w-40 h-40 mx-auto" />
+    <figure>
+        <img src="/qr-code.svg" alt="QR Code zum Git Repository" class="w-40 h-40 mx-auto" />
+        <figcaption>https://tinyurl.com/ng-zoneless</figcaption>
+    </figure>
   </div>
 </div>
 

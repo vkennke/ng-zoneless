@@ -2,3 +2,7 @@
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
+
+.slidev-layout.center h1 {
+    margin-bottom: 1em;
+}
