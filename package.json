@@ -5,10 +5,11 @@
   "scripts": {
     "build": "slidev build",
     "dev": "slidev --open",
-    "export": "slidev export"
+    "export": "slidev export",
+    "remote": "slidev --remote"
   },
   "dependencies": {
-    "@slidev/cli": "^52.8.0",
+    "@slidev/cli": "^52.9.1",
     "slidev-theme-the-unnamed": "latest",
     "vue": "^3.5.24"
   },

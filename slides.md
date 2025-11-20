@@ -5,6 +5,7 @@ layout: cover
 class: text-center
 highlighter: shiki
 lineNumbers: true
+canvasWidth: 1000
 info: |
   ## Angular Zoneless
   Vom implicit zum explicit reactive programming
@@ -200,7 +201,7 @@ Das ist bequem, aber schauen wir mal was dabei passiert...
 
 1. Zone.js fängt Event ab
 2. Führt Callback aus
-3. Markiert Component als "dirty"
+3. **Triggert Change Detection**
 4. **Prüft GESAMTEN Tree**
 5. Vergleicht alte vs. neue Werte
 6. Aktualisiert DOM
@@ -235,6 +236,13 @@ graph TD
 
 <!--
 WICHTIG: Das ist der Kern des Performance-Problems!
+
+Zu Punkt 2 - "Führt Callback aus":
+Zone.js führt den Event-Handler/Callback aus:
+- Bei Click: () => { this.counter++ }
+- Bei HTTP: subscribe(data => { this.users = data })
+- Bei setTimeout: () => { this.message = 'Done' }
+Erst wenn der Callback fertig ist, triggert Zone.js Change Detection.
 
 Zu Punkt 5 - "Vergleicht alte vs. neue Werte":
 - Template-Bindings: Angular evaluiert ALLE Expressions neu ({{ user.name }}, [value]="counter")
@@ -296,46 +304,6 @@ Mit Zoneless haben wir endlich Kontrolle darüber.
 -->
 
 ---
-
-# Die Vision
-
-<div class="grid grid-cols-2 gap-12">
-
-<div>
-
-## Implicit (alt)
-
-> "Framework, mach du mal!"
-
-❌ Keine Kontrolle  
-❌ Performance-Overhead  
-✅ Einfach für Anfänger  
-✅ Weniger Code
-
-</div>
-
-<div>
-
-## Explicit (neu)
-
-> "Ich sage dir genau, was sich ändert"
-
-✅ Volle Kontrolle  
-✅ Optimale Performance  
-✅ Vorhersagbar  
-⚠️ Steile Lernkurve
-
-</div>
-
-</div>
-
-<!--
-Es ist ein Trade-off: Bequemlichkeit vs. Kontrolle und Performance.
-Für kleine Apps war Zone.js völlig ok.
-Aber Angular will mit React, Vue 3, Solid konkurrieren - da braucht es Performance.
--->
-
----
 layout: section
 ---
 
@@ -344,14 +312,14 @@ layout: section
 ## Die neue Welt: Signals & Zoneless
 
 <!--
-Jetzt wird's spannend - wie funktioniert die neue Welt?
+Wir wollen also Zone.js loswerden, aber was brauchen wir dafür und wie funktioniert das?
 -->
 
 ---
 
 # Signals: Die Grundbausteine
 
-```typescript {all|2|4|6|8-10|all}
+```typescript {all|2|4|6|8|10}
 // Signal erstellen
 const count = signal(0);
 
@@ -364,20 +332,16 @@ count.update(value => value + 1);  // Update basierend auf aktuellem Wert
 console.log(count());  // 6
 ```
 
-<v-clicks>
-
-- **Wrapper** um einen reaktiven Wert
-- Lesen mit `()`
-- Schreiben mit `.set()` oder `.update()`
-- Angular weiß **genau**, was sich geändert hat
-
-</v-clicks>
+<ul>
+    <li v-click="1"><b>Wrapper</b> um einen reaktiven Wert</li>
+    <li v-click="2">Lesen mit <code>()</code></li>
+    <li v-click="4">Schreiben mit <code>.set()</code> oder <code>.update()</code></li>
+</ul>
 
 <!--
 Signals sind das Herzstück von Zoneless Angular.
 Ein Signal ist ein Wrapper um einen Wert - Angular weiß exakt, wann sich dieser Wert ändert.
 Lesen mit Klammern, schreiben mit set/update.
-Gewöhnungsbedürftig, aber sehr mächtig.
 -->
 
 ---
@@ -419,7 +383,7 @@ Sehr elegant für Dinge wie Summen, Filter, Sortierungen.
 
 # Effects: Seiteneffekte
 
-```typescript {all|3|12-15|6-9|all}
+```typescript {all|3|6-9|12-15|all}
 @Component({...})
 class UserProfile {
     userId = signal(123);
@@ -440,20 +404,36 @@ class UserProfile {
 
 <v-click>
 
-**Effects** = Code der läuft, wenn sich Signals ändern (ähnlich wie useEffect in React)
+**Effects** = Code der läuft, wenn sich Signals ändern
 
 </v-click>
 
 <!--
 Effects sind für Seiteneffekte - Logging, Analytics, API-Calls.
-Ähnlich wie useEffect in React, aber feingranularer.
 Der Effect läuft automatisch, wenn sich userId ändert.
+
+WICHTIG: Wer sich jetzt fragt: Wie weiß Angular was aktualisiert werden muss?
+Der Dependency-Graph wird ZUR LAUFZEIT erstellt!
+Wenn ein Signal im Template gelesen wird ({{ count() }}), registriert sich das Template als "Consumer".
+Angular baut dynamisch einen Graph: Signal → Template/Computed/Effect.
+Bei userId.set(newId) werden nur die registrierten Consumer benachrichtigt und aktualisiert.
+
+Warum zur Laufzeit? Weil es flexibel sein muss:
+- @if Bedingungen: Consumer wird nur registriert wenn Bedingung true ist
+- Computed Chains: Abhängigkeiten können sich zur Laufzeit ändern
+- Effects: Werden nur registriert wenn sie ausgeführt werden
+
+Das ist der Kern von Fine-grained Reactivity!
+Gewöhnungsbedürftig, aber sehr mächtig.
 -->
 
 ---
 
-# Async Resources (rxResource)
-```typescript {all|17-21|3-4|5-6|7-13|all}{maxHeight:'412px'}
+# Async Resources
+<div class="relative">
+<div v-click-hide="6" class="absolute">
+
+```typescript {all|17-21|3-4|5-6|7-13|19-21}{maxHeight:'412px'}
 @Component({
     template: `
     @if (users.isLoading()) {
@@ -470,13 +450,74 @@ Der Effect läuft automatisch, wenn sich userId ändert.
   `
 })
 class UserList {
-    http = inject(HttpClient);
+    private http = inject(HttpClient);
 
     users: ResourceRef<User[]> = rxResource({
         stream: () => this.http.get<User[]>('/api/users')
     });
 }
 ```
+
+</div>
+
+<div v-click="6" v-click-hide="7" class="absolute">
+
+```typescript {17-21}{maxHeight:'412px'}
+@Component({
+    template: `
+    @if (users.isLoading()) {
+      <p>Lädt...</p>
+    } @else if (users.hasError()) {
+      <p>Fehler: {{ users.error() }}</p>
+    } @else if (users.hasValue()) {
+      <ul>
+        @for (user of users.value(); track user.id) {
+          <li>{{ user.name }}</li>
+        }
+      </ul>
+    }
+  `
+})
+class UserList {
+    // loader erwartet ein Promise statt Observable
+    
+    users: ResourceRef<User[]> = resource({
+        loader: () => fetch('/api/users').then(res => res.json())
+    });
+}
+```
+
+</div>
+
+<div v-click="7" class="absolute">
+
+```typescript {17-19}{maxHeight:'412px'}
+@Component({
+    template: `
+    @if (users.isLoading()) {
+      <p>Lädt...</p>
+    } @else if (users.hasError()) {
+      <p>Fehler: {{ users.error() }}</p>
+    } @else if (users.hasValue()) {
+      <ul>
+        @for (user of users.value(); track user.id) {
+          <li>{{ user.name }}</li>
+        }
+      </ul>
+    }
+  `
+})
+class UserList {
+    // Method, Header, ... können als Parameter angegeben werden
+    
+    users: ResourceRef<User[]> = httpResource(() => '/api/users');
+}
+```
+
+</div>
+
+</div>
+
 
 <!--
 rxResource ist perfekt für asynchrone Daten.
@@ -488,6 +529,8 @@ Sehr elegant - keine manuellen Subscribe/Unsubscribe mehr nötig.
 ---
 
 # Zoneless aktivieren
+
+<div v-click="1">
 
 ```typescript {all|5-8|all}
 // main.ts
@@ -501,11 +544,11 @@ bootstrapApplication(AppComponent, {
 });
 ```
 
-
+</div>
 
 <v-clicks>
 
-- Seit Angular 18 experimentell verfügbar, **Stable seit Angular 19** (November 2024)
+- Seit Angular 18 experimentell verfügbar, **Stable seit Angular 20.2**
 - Zone.js wird nicht mehr geladen
 - Nur Signals, Async Pipe & explizite `markForCheck()` triggern Updates
 - Nicht vergessen:
@@ -515,8 +558,10 @@ bootstrapApplication(AppComponent, {
 </v-clicks>
 
 <!--
+Mit Resources haben wir alle Bausteine durch. Signals für State, Computed für abgeleitete Werte, Effects für Seiteneffekte, Resources für async Daten. Und hier ist der Clou: Das reicht! Wir brauchen Zone.js überhaupt nicht mehr. Angular weiß durch die Signals genau was sich geändert hat, kein automatisches Durchsuchen mehr nötig. Also - wie kriegen wir Zone.js jetzt raus aus unserer App?
+
 So aktiviert man Zoneless - eine Zeile!
-Seit Angular 19 ist es stable, seit Angular 21 sogar der Default.
+Seit Angular 20.2 ist es stable, seit Angular 21 sogar der Default.
 Wichtig: Ohne Zone.js müssen alle Changes über Signals oder die Async Pipe kommen.
 -->
 
@@ -640,45 +685,6 @@ Inkrementelle Migration ist möglich und sinnvoll.
 
 ---
 
-# Migration Path
-
-```typescript
-// Phase 1: Beide Ansätze parallel
-@Component({...})
-class MixedComponent {
-    // Alt: normale Properties
-    oldCounter = 0;
-
-    // Neu: Signals
-    newCounter = signal(0);
-
-    // Funktioniert beides!
-}
-```
-
-<v-click>
-
-```typescript
-// Phase 2: Vollständig auf Signals
-@Component({...})
-class FullyModernComponent {
-    counter = signal(0);
-    users = signal<User[]>([]);
-    filteredUsers = computed(() =>
-        this.users().filter(u => u.active)
-    );
-}
-```
-
-</v-click>
-
-<!--
-Wichtig für die Migration: Ihr müsst nicht alles auf einmal umstellen.
-Inkrementelle Migration ist möglich und sinnvoll.
--->
-
----
-
 # Migration Tipps
 
 <v-clicks>
@@ -721,8 +727,8 @@ layout: section
 
 <v-clicks>
 
-- **Angular 19** (November 2024): Signals & Zoneless sind **stable**
-- **Angular 20** (Mai 2025): Weitere Optimierungen und Performance-Verbesserungen
+- **Angular 19** (November 2024): Signals sind **stable**
+- **Angular 20** (Mai 2025): Zoneless ist stable + weitere Optimierungen und Performance-Verbesserungen
 - **Angular 21** (November 2025, gestern erschienen!):
     - **Signal Forms** als neuer Standard
     - **Zoneless ist jetzt der Default**
@@ -781,7 +787,7 @@ class: text-center
 
 Von **"Magic"** zu **"Explizit"**
 
-Von **"Implicit"** zu **"Reactive"**
+Von **"Implicit Change Detection"** zu **"Reactive"**
 
 Von **"Overhead"** zu **"Performance"**
 
@@ -806,7 +812,7 @@ class: text-center
   <div>
     <div class="text-sm opacity-70 mb-2">Slides verfügbar unter:</div>
     <figure>
-        <img src="/qr-code.svg" alt="QR Code zum Git Repository" class="w-40 h-40 mx-auto" />
+    <img src="/qr-code.svg" alt="QR Code zum Git Repository" class="w-40 h-40 mx-auto" />
         <figcaption>https://tinyurl.com/ng-zoneless</figcaption>
     </figure>
   </div>
